@@ -1,0 +1,1365 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panchayat Bulk Estimate & Technical Sanction System</title>
+    
+    <!-- Google Fonts & Font Awesome Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Processing Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            font-family: 'Poppins', 'Noto Sans Devanagari', sans-serif;
+            min-height: 100vh;
+            padding: 30px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container { width: 100%; max-width: 1180px; }
+        .app-header { text-align: center; margin-bottom: 25px; }
+        .app-header h1 { font-size: 24px; color: #38bdf8; margin-bottom: 6px; }
+        .app-header p { font-size: 13px; color: #94a3b8; }
+
+        .card {
+            background-color: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 22px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+        }
+
+        .card h2 {
+            font-size: 15px;
+            color: #e2e8f0;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .upload-zone {
+            border: 2px dashed #3b82f6;
+            background-color: #0f172a;
+            padding: 20px;
+            text-align: center;
+            border-radius: 10px;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s;
+        }
+
+        .upload-zone:hover { background-color: #1a2744; }
+        .upload-zone input[type="file"] {
+            position: absolute; left: 0; top: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer;
+        }
+
+        .sheet-checkboxes {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            background: #0f172a;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #334155;
+            margin-top: 10px;
+        }
+
+        .sheet-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #1e293b;
+            padding: 6px 14px;
+            border-radius: 6px;
+            border: 1px solid #475569;
+            cursor: pointer;
+            font-size: 13px;
+            color: #f1f5f9;
+        }
+
+        .sheet-label input[type="checkbox"] {
+            accent-color: #38bdf8;
+            width: 16px;
+            height: 16px;
+        }
+
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        label { font-size: 12px; font-weight: 500; color: #cbd5e1; }
+
+        input[type="text"], input[type="number"], textarea, select {
+            background-color: #0f172a;
+            border: 1px solid #475569;
+            border-radius: 8px;
+            color: #f8fafc;
+            padding: 9px 12px;
+            font-family: inherit;
+            font-size: 13px;
+            outline: none;
+        }
+
+        input[type="text"]:focus, input[type="number"]:focus, textarea:focus, select:focus { border-color: #38bdf8; }
+
+        .tr-table-wrap {
+            max-height: 280px;
+            overflow-y: auto;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            margin-top: 10px;
+            background: #0f172a;
+        }
+
+        table.tr-entry-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        table.tr-entry-table th, table.tr-entry-table td {
+            padding: 5px 8px;
+            border: 1px solid #334155;
+            vertical-align: middle;
+        }
+
+        table.tr-entry-table th {
+            background: #1e293b;
+            color: #38bdf8;
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            text-align: left;
+        }
+
+        .btn-small {
+            background: #3b82f6;
+            color: #fff;
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .btn-del {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid #ef4444;
+            color: #f87171;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .preview-stack-wrapper {
+            background: #334155;
+            padding: 30px 20px;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 30px;
+            overflow-x: auto;
+            margin-top: 15px;
+        }
+
+        .page-badge {
+            background: #0f172a;
+            color: #38bdf8;
+            padding: 5px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            border: 1px solid #475569;
+            display: inline-block;
+        }
+
+        .a4-sheet-card {
+            background: #ffffff;
+            color: #000000;
+            width: 210mm;
+            min-height: 297mm;
+            padding: 12mm 10mm 10mm 10mm;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+            font-family: 'Noto Sans Devanagari', 'Calibri', sans-serif;
+            box-sizing: border-box;
+            line-height: 1.35;
+        }
+
+        .sheet-meta-header {
+            margin-bottom: 8px;
+            font-size: 11px;
+            border-bottom: 1px solid #94a3b8;
+            padding-bottom: 4px;
+        }
+
+        .sheet-meta-header h3 {
+            font-size: 13px;
+            text-align: center;
+            margin-bottom: 3px;
+        }
+
+        /* --- Official High-Precision Government TS Order Styling --- */
+        .ts-order-page {
+            font-size: 10pt;
+            color: #000;
+            line-height: 1.4;
+            width: 100%;
+        }
+        .ts-order-header { text-align: center; font-weight: 700; font-size: 12.5pt; margin-bottom: 2px; }
+        .ts-order-sub { text-align: center; font-weight: 700; font-size: 11.5pt; margin-bottom: 10px; text-decoration: underline; }
+        .ts-order-date-row { text-align: right; font-weight: 700; font-size: 10pt; margin-bottom: 5px; }
+        
+        .ts-order-body-continuous {
+            text-align: justify;
+            margin-bottom: 8px;
+            font-size: 9.8pt;
+            line-height: 1.4;
+        }
+        
+        table.ts-order-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 6px 0 10px 0;
+            font-size: 9pt;
+        }
+        table.ts-order-table th, table.ts-order-table td {
+            border: 1px solid #000;
+            padding: 4px 5px;
+            text-align: center;
+            vertical-align: middle;
+        }
+        table.ts-order-table th { background: #f8fafc; font-weight: 700; }
+        
+        .ts-terms-list { font-size: 8.2pt; line-height: 1.3; margin-bottom: 8px; }
+        .ts-terms-list ol { padding-left: 18px; }
+        .ts-terms-list li { margin-bottom: 2px; text-align: justify; }
+
+        .ts-ee-sign-block { text-align: right; font-weight: 700; font-size: 9pt; margin-top: 8px; line-height: 1.25; }
+        .ts-endorsement-block { border-top: none; padding-top: 5px; margin-top: 8px; font-size: 8.2pt; line-height: 1.3; }
+
+        .ts-sanction-box-preview {
+            margin: 16px auto 0 auto;
+            width: 68%;
+            padding: 0;
+            border: none;
+            background: transparent;
+            color: #000;
+        }
+        .ts-header-title {
+            text-align: center; font-weight: bold; font-size: 11px; margin-bottom: 6px; letter-spacing: 0.5px; text-transform: uppercase;
+        }
+        .ts-body-text { text-align: left; line-height: 1.35; margin-bottom: 8px; font-size: 9pt; }
+        .ts-sign-right { text-align: right; line-height: 1.35; font-weight: bold; font-size: 9.5px; margin-top: 4px; }
+
+        table.preview-sheet-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 8pt;
+            color: #000;
+            margin-top: 4px;
+            table-layout: fixed;
+        }
+        table.preview-sheet-table th, table.preview-sheet-table td {
+            border: 1px solid #475569;
+            padding: 2px 3px;
+            line-height: 1.15;
+            vertical-align: middle;
+            word-break: break-word;
+            overflow-wrap: break-word;
+        }
+        table.preview-sheet-table th { background-color: #f1f5f9; font-weight: bold; text-align: center; padding: 3px; }
+
+        .signatures-preview-grid {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 14px;
+            padding-top: 6px;
+            font-size: 9.5px;
+            color: #000;
+        }
+        .sig-col { width: 42%; text-align: center; }
+        .sig-line1 { font-weight: bold; font-size: 10px; }
+        .sig-line2 { font-size: 9px; margin-top: 1px; }
+
+        .btn-action {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: #fff;
+            font-family: inherit;
+            font-size: 16px;
+            font-weight: 600;
+            padding: 16px 26px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.2s;
+            width: 100%;
+        }
+        .btn-action:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(16, 185, 129, 0.4); }
+        .btn-action:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .status-box { margin-top: 15px; padding: 12px 16px; border-radius: 8px; font-size: 13px; display: none; }
+        .status-success { background: rgba(16, 185, 129, 0.15); border: 1px solid #10b981; color: #34d399; }
+        .status-info { background: rgba(56, 189, 248, 0.15); border: 1px solid #38bdf8; color: #38bdf8; }
+        .status-error { background: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; color: #f87171; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="app-header">
+            <h1><i class="fa-solid fa-file-contract"></i> Panchayat Estimate & Technical Sanction System</h1>
+            <p>100% Crisp Layout | Perfect Hindi Typography | Automatic Formula Spans & Drawings</p>
+        </div>
+
+        <!-- Step 1: Upload Master Estimate File -->
+        <div class="card">
+            <h2><i class="fa-solid fa-file-excel" style="color: #38bdf8;"></i> Step 1: Upload Master Estimate Workbook (.xlsx)</h2>
+            <div class="upload-zone">
+                <i class="fa-solid fa-cloud-arrow-up" style="font-size: 28px; color: #38bdf8; margin-bottom: 6px;"></i>
+                <p id="templateLabel" style="font-size: 14px; font-weight: 500;">Click or Drag Master Estimate File Here</p>
+                <input type="file" id="templateFileInput" accept=".xlsx, .xls" onchange="handleTemplateUpload(event)">
+            </div>
+            <div id="sheetSelectionArea" style="display: none; margin-top: 15px;">
+                <label>Select Sheet(s) to include & preview in output:</label>
+                <div id="sheetCheckboxContainer" class="sheet-checkboxes"></div>
+            </div>
+        </div>
+
+        <!-- Step 2: Import List of Works -->
+        <div class="card">
+            <h2><i class="fa-solid fa-file-import" style="color: #38bdf8;"></i> Step 2: Import List of Works & Panchayat Names</h2>
+            <div class="upload-zone" style="padding: 16px; border-color: #10b981;">
+                <i class="fa-solid fa-table-list" style="font-size: 24px; color: #10b981; margin-bottom: 4px;"></i>
+                <p id="workListLabel" style="font-size: 13px; font-weight: 500;">Upload List of Works (.xlsx, .xls, .csv)</p>
+                <input type="file" id="workListInput" accept=".xlsx, .xls, .csv" onchange="handleWorkListUpload(event)">
+            </div>
+            <p id="workListStatusMsg" style="font-size: 12px; color: #34d399; margin-top: 8px; display: none;"></p>
+        </div>
+
+        <!-- Step 3: Official TS Order Details -->
+        <div class="card" style="border: 1px solid #38bdf8;">
+            <h2><i class="fa-solid fa-file-signature" style="color: #38bdf8;"></i> Step 3: Page 1 - Technical Sanction (TS) Order Details (आदेश)</h2>
+            <div class="grid-4" style="margin-bottom: 10px;">
+                <div class="form-group" style="grid-column: span 2;">
+                    <label>कार्यालय का नाम / विभाग:</label>
+                    <input type="text" id="tsOfficeHeader" value="कार्यालय कार्यपालन यंत्री ग्रामीण यांत्रिकी सेवा संभाग सिंगरौली (म.प्र.)" oninput="updateAllSheetsPreview()">
+                </div>
+                <div class="form-group">
+                    <label>योजना का नाम / मद (Mad):</label>
+                    <input type="text" id="tsMadName" value="........................................" placeholder="मद का नाम" oninput="updateAllSheetsPreview()">
+                </div>
+                <div class="form-group">
+                    <label>तकनीकी स्वीकृत राशि (लाख में / Override):</label>
+                    <input type="text" id="manualTsAmount" value="18.25" placeholder="e.g. 18.25" oninput="updateAllSheetsPreview()">
+                </div>
+            </div>
+            <div class="grid-3">
+                <div class="form-group">
+                    <label>आदेश क्रमांक (TS No.):</label>
+                    <input type="text" id="tsOrderNo" value="क्रमांक/................../ग्रा.यां.से./तक./2026" oninput="updateAllSheetsPreview()">
+                </div>
+                <div class="form-group">
+                    <label>स्थान / दिनांक:</label>
+                    <input type="text" id="tsOrderDate" value="सिंगरौली, दिनांक: .........................." oninput="updateAllSheetsPreview()">
+                </div>
+                <div class="form-group">
+                    <label>स्वीकृति प्राधिकारी (Signatory):</label>
+                    <input type="text" id="tsEeTitle" value="कार्यपालन यंत्री, ग्रामीण यांत्रिकी सेवा, संभाग सिंगरौली (म.प्र.)" oninput="updateAllSheetsPreview()">
+                </div>
+            </div>
+            <div class="grid-2" style="margin-top: 8px;">
+                <div class="form-group">
+                    <label>कॉलम 06 (तकनीकी स्वी. क्र. एवं दिनांक):</label>
+                    <input type="text" id="tsCol6Text" value="............................" oninput="updateAllSheetsPreview()">
+                </div>
+                <div class="form-group">
+                    <label>पृष्ठांकन प्रतिलिपि (Copies to):</label>
+                    <input type="text" id="tsCopiesTo" value="1- कलेक्टर जिला सिंगरौली की ओर सादर सूचनार्थ। 2- मुख्य कार्यपालन अधिकारी जिला पंचायत सिंगरौली की ओर सूचनार्थ। 3- जिला परियोजना समन्वयक, जिला शिक्षा केंद्र सिंगरौली की ओर सूचनार्थ।" oninput="updateAllSheetsPreview()">
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 4: Technical Report Entry Form -->
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h2><i class="fa-solid fa-clipboard-question" style="color: #38bdf8;"></i> Step 4: Page 2 - Technical Report (TR) Entry Form</h2>
+                <button class="btn-small" onclick="addTechnicalReportRow()"><i class="fa-solid fa-plus"></i> Add Question</button>
+            </div>
+            <div class="tr-table-wrap">
+                <table class="tr-entry-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px; text-align: center;">Sr. No.</th>
+                            <th style="width: 45%;">Question / Technical Point</th>
+                            <th>Answer / Specification / Observation</th>
+                            <th style="width: 50px; text-align: center;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="trQuestionsTbody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Step 5: Signatures & TS Sheet Target Selection -->
+        <div class="card">
+            <h2><i class="fa-solid fa-stamp" style="color: #38bdf8;"></i> Step 5: Authority Signatures & Technical Sanction Setup</h2>
+            <div class="grid-2" style="margin-bottom: 14px;">
+                <div class="form-group">
+                    <label>Signatory 1 (Sub Engineer):</label>
+                    <input type="text" id="sig1_line1" value="Sub Engineer" oninput="updateAllSheetsPreview()" style="margin-bottom: 4px;">
+                    <input type="text" id="sig1_line2" value="Janpad Shiksha Kendra {JANPAD}" oninput="updateAllSheetsPreview()">
+                </div>
+                <div class="form-group">
+                    <label>Signatory 2 (Assistant Engineer):</label>
+                    <input type="text" id="sig2_line1" value="Assistant Engineer" oninput="updateAllSheetsPreview()" style="margin-bottom: 4px;">
+                    <input type="text" id="sig2_line2" value="Zila Shiksha Kendra Singrauli" oninput="updateAllSheetsPreview()">
+                </div>
+            </div>
+
+            <!-- Which Sheet requires TS order on its last page -->
+            <div class="form-group" style="background: #0f172a; padding: 14px; border-radius: 8px; border: 1px solid #3b82f6; margin-bottom: 14px;">
+                <div class="grid-2" style="align-items: center; margin-bottom: 8px;">
+                    <div>
+                        <label style="color: #38bdf8; font-weight: 600; font-size: 13px;">
+                            <i class="fa-solid fa-file-circle-check"></i> Which Sheet requires the Technical Sanction Order on its LAST page?
+                        </label>
+                    </div>
+                    <div>
+                        <select id="tsTargetSheetSelect" onchange="updateAllSheetsPreview()" style="width: 100%;">
+                            <option value="none" selected>Do Not Add TS Order at end of sheets</option>
+                            <option value="all">Add TS Order to ALL Selected Sheets</option>
+                        </select>
+                    </div>
+                </div>
+
+                <label style="color: #cbd5e1; font-size: 12px;">TS Body Paragraph (Left Aligned):</label>
+                <textarea id="finalTSBoxText" rows="3" style="resize: vertical; font-size: 12px; line-height: 1.4; margin-top: 4px;" oninput="updateAllSheetsPreview()">TS No................................................ Technical Sanction is hereby accorded for "{WORK_NAME}" GP: {GP_NAME}, Janpad: {JANPAD} for an estimated amount of Rs. {AMOUNT}/- based on current Schedule of Rates (SOR).</textarea>
+
+                <div class="grid-3" style="margin-top: 8px;">
+                    <div class="form-group">
+                        <label>Sanctioning Authority Line 1:</label>
+                        <input type="text" id="tsAuthorityLine1" value="Executive Engineer" oninput="updateAllSheetsPreview()">
+                    </div>
+                    <div class="form-group">
+                        <label>Sanctioning Authority Line 2:</label>
+                        <input type="text" id="tsAuthorityLine2" value="R.E.S. Singrauli" oninput="updateAllSheetsPreview()">
+                    </div>
+                    <div class="form-group">
+                        <label>EE Sign/Seal Gap (mm):</label>
+                        <input type="number" id="eeSignGapMm" value="18" min="8" max="40" oninput="updateAllSheetsPreview()">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Page Layout Settings -->
+            <div class="grid-3">
+                <div class="form-group">
+                    <label>Page Orientation:</label>
+                    <select id="pageOrientation" onchange="updateAllSheetsPreview()">
+                        <option value="portrait" selected>Portrait (A4 Vertical)</option>
+                        <option value="landscape">Landscape (A4 Horizontal)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Estimate Table Font Size:</label>
+                    <select id="previewFontSize" onchange="updateAllSheetsPreview()">
+                        <option value="7.5">7.5 pt (Ultra Fit)</option>
+                        <option value="8.0" selected>8.0 pt (Standard Clean)</option>
+                        <option value="8.5">8.5 pt (Large)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Page Margin (mm):</label>
+                    <input type="number" id="pageMarginMm" value="6" min="2" max="25" onchange="updateAllSheetsPreview()">
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 6: Upload Drawing -->
+        <div class="card" style="border: 1px solid #f59e0b;">
+            <h2><i class="fa-solid fa-compass-drafting" style="color: #f59e0b;"></i> Step 6: Attach Approved Drawing (PDF)</h2>
+            <div class="upload-zone" style="border-color: #f59e0b; padding: 16px;">
+                <i class="fa-solid fa-file-pdf" style="font-size: 26px; color: #f59e0b; margin-bottom: 4px;"></i>
+                <p id="drawingLabel" style="font-size: 13px; font-weight: 500;">Click or Drag Drawing PDF File Here (Optional)</p>
+                <input type="file" id="drawingFileInput" accept=".pdf" onchange="handleDrawingUpload(event)">
+            </div>
+            <p id="drawingStatusMsg" style="font-size: 12px; color: #facc15; margin-top: 6px; display: none;"></p>
+        </div>
+
+        <!-- Preview Wrapper -->
+        <div class="card">
+            <h2><i class="fa-solid fa-eye" style="color: #38bdf8;"></i> Live Preview</h2>
+            <div class="preview-stack-wrapper" id="allSheetsPreviewStack">
+                <div style="color: #94a3b8; padding: 20px; text-align: center;">
+                    <i class="fa-solid fa-cloud-arrow-up" style="font-size: 28px; margin-bottom: 8px; color: #38bdf8;"></i>
+                    <p>Upload your Master Estimate File (.xlsx) above to render the complete live sheets preview.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Button -->
+        <button id="generateBtn" class="btn-action" onclick="generateAllEstimates()">
+            <i class="fa-solid fa-file-zipper"></i> Generate & Download Complete Estimates with TS Order & Drawings (ZIP)
+        </button>
+
+        <div id="statusBox" class="status-box"></div>
+    </div>
+
+    <script>
+        let rawTemplateBuffer = null;
+        let templateWorkbook = null;
+        let workItemsList = [];
+        let drawingPdfBuffer = null;
+
+        let technicalReportData = [
+            { q: "Name of Work and Location", a: "Construction of {WORK_NAME} at GP {GP_NAME}, Janpad {JANPAD}" },
+            { q: "Necessity and Urgency of the proposed work", a: "Required for providing adequate educational infrastructure and safe classroom environment." },
+            { q: "Schedule of Rates (SOR) adopted for preparation of estimate", a: "Current Rural Engineering Services (RES) / PWD Schedule of Rates." },
+            { q: "Site inspection status and suitability of land", a: "Site has been physically inspected by the Sub Engineer and found suitable for construction." },
+            { q: "Foundation and Soil Condition at site", a: "Dense / Hard soil strata encountered at required depth for excavation." },
+            { q: "Specification of structural materials (Cement, Steel, Aggregates)", a: "PPC 43/53 grade cement, Fe-500 TMT bars, and standard approved aggregates." },
+            { q: "Arrangement for water supply and electricity during construction", a: "Available locally at the Gram Panchayat site." },
+            { q: "Provision made for Quality Control & Testing", a: "Standard quality testing will be conducted as per departmental norms." },
+            { q: "Estimated completion period of the work", a: "6 Months from the date of work order / commencement." }
+        ];
+
+        function renderTRQuestionsTable() {
+            const tbody = document.getElementById('trQuestionsTbody');
+            tbody.innerHTML = '';
+            technicalReportData.forEach((item, idx) => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td style="text-align: center; font-weight: 600; color: #38bdf8;">${idx + 1}</td>
+                        <td><input type="text" value="${item.q.replace(/"/g, '&quot;')}" style="width: 100%;" oninput="updateTRQuestion(${idx}, this.value)"></td>
+                        <td><textarea rows="2" style="width: 100%; resize: vertical;" oninput="updateTRAnswer(${idx}, this.value)">${item.a}</textarea></td>
+                        <td style="text-align: center;"><button class="btn-del" onclick="deleteTechnicalReportRow(${idx})"><i class="fa-solid fa-trash"></i></button></td>
+                    </tr>
+                `;
+            });
+        }
+
+        function updateTRQuestion(index, val) { technicalReportData[index].q = val; updateAllSheetsPreview(); }
+        function updateTRAnswer(index, val) { technicalReportData[index].a = val; updateAllSheetsPreview(); }
+        function addTechnicalReportRow() { technicalReportData.push({ q: "New Question / Parameter", a: "Specification / Response" }); renderTRQuestionsTable(); updateAllSheetsPreview(); }
+        function deleteTechnicalReportRow(index) { if (technicalReportData.length > 1) { technicalReportData.splice(index, 1); renderTRQuestionsTable(); updateAllSheetsPreview(); } }
+
+        renderTRQuestionsTable();
+
+        function handleTemplateUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            document.getElementById('templateLabel').innerText = `Loaded: ${file.name}`;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                rawTemplateBuffer = e.target.result;
+                templateWorkbook = XLSX.read(rawTemplateBuffer, { type: 'array' });
+                
+                const container = document.getElementById('sheetCheckboxContainer');
+                container.innerHTML = '';
+
+                const tsSelect = document.getElementById('tsTargetSheetSelect');
+                tsSelect.innerHTML = `
+                    <option value="none" selected>Do Not Add TS Order at end of sheets</option>
+                    <option value="all">Add TS Order to ALL Selected Sheets</option>
+                `;
+
+                templateWorkbook.SheetNames.forEach((sheetName) => {
+                    const label = document.createElement('label');
+                    label.className = 'sheet-label';
+                    label.innerHTML = `<input type="checkbox" name="selectedSheets" value="${sheetName}" checked onchange="updateAllSheetsPreview()"> <span>${sheetName}</span>`;
+                    container.appendChild(label);
+
+                    const opt = document.createElement('option');
+                    opt.value = sheetName;
+                    opt.innerText = `Only on: "${sheetName}"`;
+                    tsSelect.appendChild(opt);
+                });
+
+                document.getElementById('sheetSelectionArea').style.display = 'block';
+                updateAllSheetsPreview();
+                showStatus(`Master Template loaded with ${templateWorkbook.SheetNames.length} sheet(s).`, 'status-info');
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function handleWorkListUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            document.getElementById('workListLabel').innerText = `Loaded: ${file.name}`;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const wb = XLSX.read(data, { type: 'array' });
+                const ws = wb.Sheets[wb.SheetNames[0]];
+                const json = XLSX.utils.sheet_to_json(ws, { defval: '' });
+
+                if (json.length === 0) { showStatus('The uploaded work list file is empty.', 'status-error'); return; }
+
+                workItemsList = json.map(row => {
+                    const keys = Object.keys(row);
+                    const findVal = (terms) => {
+                        const key = keys.find(k => terms.some(t => k.toLowerCase().includes(t)));
+                        return key ? String(row[key]).trim() : '';
+                    };
+
+                    return {
+                        workName: String(findVal(['work', 'kary', 'name of work', 'item']) || Object.values(row)[0] || '').trim(),
+                        gpName: String(findVal(['gram', 'gp', 'panchayat']) || Object.values(row)[1] || '').trim(),
+                        janpadName: String(findVal(['janpad', 'block', 'samiti']) || Object.values(row)[2] || '').trim()
+                    };
+                }).filter(item => item.workName !== '');
+
+                document.getElementById('workListStatusMsg').innerText = `✓ Successfully imported ${workItemsList.length} works.`;
+                document.getElementById('workListStatusMsg').style.display = 'block';
+                updateAllSheetsPreview();
+                showStatus(`Imported ${workItemsList.length} items from work list file.`, 'status-success');
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function handleDrawingUpload(event) {
+            const file = event.target.files[0];
+            if (!file) { drawingPdfBuffer = null; return; }
+
+            document.getElementById('drawingLabel').innerText = `Loaded Drawing: ${file.name}`;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                drawingPdfBuffer = e.target.result;
+                const msg = document.getElementById('drawingStatusMsg');
+                msg.innerText = `✓ Drawing PDF attached (${(file.size / 1024).toFixed(1)} KB) - Will be appended to output PDFs.`;
+                msg.style.display = 'block';
+                showStatus(`Drawing PDF successfully loaded.`, 'status-success');
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function formatCellVal(val) {
+            if (val === undefined || val === null || val === '') return '';
+            if (typeof val === 'number') return Number.isInteger(val) ? String(val) : val.toFixed(2);
+            if (typeof val === 'string' && !isNaN(val) && val.trim() !== '') {
+                const num = parseFloat(val);
+                return Number.isInteger(num) ? val : num.toFixed(2);
+            }
+            return String(val);
+        }
+
+        function isAmountOrNumberHeader(headerText) {
+            const h = String(headerText || '').toLowerCase().trim();
+            return (h.includes('amount') || h.includes('rate') || h.includes('qty') || h.includes('quantity') || h.includes('cost') || h.includes('total') || h.includes('area') || h.includes('content'));
+        }
+
+        function splitTextIntoChunks(text, maxCharsPerLine = 48, maxLinesPerChunk = 2) {
+            if (!text || String(text).trim() === '') return [''];
+            const words = String(text).replace(/\r\n/g, '\n').split(/\s+/);
+            const lines = [];
+            let currentLine = '';
+
+            words.forEach(w => {
+                if ((currentLine + ' ' + w).trim().length <= maxCharsPerLine) {
+                    currentLine = (currentLine + ' ' + w).trim();
+                } else {
+                    if (currentLine) lines.push(currentLine);
+                    currentLine = w;
+                }
+            });
+            if (currentLine) lines.push(currentLine);
+
+            const chunks = [];
+            for (let i = 0; i < lines.length; i += maxLinesPerChunk) {
+                chunks.push(lines.slice(i, i + maxLinesPerChunk).join('\n'));
+            }
+            return chunks.length > 0 ? chunks : [''];
+        }
+
+        function getTechnicalReportGrid(work) {
+            const headers = ['Sr. No.', 'Particulars / Technical Questions', 'Description / Observations'];
+            const rows = technicalReportData.map((item, idx) => [String(idx + 1), resolveDynamicText(item.q, work), resolveDynamicText(item.a, work)]);
+            const colStyles = { 0: { cellWidth: 12, halign: 'center' }, 1: { cellWidth: 65, halign: 'left' }, 2: { cellWidth: 110, halign: 'left' } };
+            return { headers, rows, colStyles, grandTotalAmount: '' };
+        }
+
+        function extractTotalAmountLakhs(rawGrid) {
+            const manualEl = document.getElementById('manualTsAmount');
+            const manualVal = manualEl ? manualEl.value.trim() : "18.25";
+
+            if (manualVal && !isNaN(parseFloat(manualVal)) && parseFloat(manualVal) > 0) {
+                return manualVal;
+            }
+
+            if (!rawGrid || rawGrid.length === 0) return "18.25";
+
+            for (let r = rawGrid.length - 1; r >= 0; r--) {
+                const rowStr = rawGrid[r].map(c => String(c || '').toLowerCase().trim()).join(' ');
+                if (rowStr.includes('total') || rowStr.includes('say') || rowStr.includes('grand')) {
+                    for (let c = rawGrid[r].length - 1; c >= 0; c--) {
+                        const cellStr = String(rawGrid[r][c] || '').replace(/,/g, '').trim();
+                        const match = cellStr.match(/\d+(\.\d+)?/);
+                        if (match) {
+                            const val = parseFloat(match[0]);
+                            if (val > 1000) return (val / 100000).toFixed(2);
+                            if (val > 0) return val.toFixed(2);
+                        }
+                    }
+                }
+            }
+            return "18.25";
+        }
+
+        function shouldIncludeTSInSheet(sheetName) {
+            const targetEl = document.getElementById('tsTargetSheetSelect');
+            if (!targetEl) return false;
+            const target = targetEl.value;
+            if (target === 'none') return false;
+            if (target === 'all') return true;
+            return target === sheetName;
+        }
+
+        function parseExcelSheetDirect(srcWs, isPortrait = true) {
+            if (!srcWs) return { headers: [], rows: [], colStyles: {}, grandTotalAmount: '' };
+            let rawGrid = XLSX.utils.sheet_to_json(srcWs, { header: 1, defval: '' });
+            if (!rawGrid || rawGrid.length === 0) return { headers: [], rows: [], colStyles: {}, grandTotalAmount: '' };
+
+            const metaPatterns = ['name of work', 'work name', 'कार्य का नाम', 'name of school', 'gram panchayat', 'janpad', 'block', 'ts order'];
+            let headerRowIndex = -1;
+
+            for (let r = 0; r < Math.min(rawGrid.length, 15); r++) {
+                const rowStr = rawGrid[r].map(c => String(c || '').toLowerCase().trim()).join(' ');
+                if ((rowStr.includes('item') || rowStr.includes('desc') || rowStr.includes('particular') || rowStr.includes('s.no') || rowStr.includes('s.')) &&
+                    (rowStr.includes('unit') || rowStr.includes('rate') || rowStr.includes('amount') || rowStr.includes('qty') || rowStr.includes('no') || rowStr.includes('length'))) {
+                    headerRowIndex = r;
+                    break;
+                }
+            }
+            if (headerRowIndex === -1) headerRowIndex = 0;
+
+            const maxCols = Math.max(...rawGrid.map(r => r.length));
+            let validCols = [];
+            for (let c = 0; c < maxCols; c++) {
+                let hasVal = false;
+                for (let r = headerRowIndex; r < rawGrid.length; r++) {
+                    if (rawGrid[r][c] !== undefined && rawGrid[r][c] !== null && String(rawGrid[r][c]).trim() !== '') { hasVal = true; break; }
+                }
+                if (hasVal) validCols.push(c);
+            }
+
+            if (validCols.length === 0) return { headers: [], rows: [], colStyles: {}, grandTotalAmount: '' };
+            let headers = validCols.map(c => String(rawGrid[headerRowIndex][c] || `Col ${c+1}`).trim());
+
+            let descIdx = headers.findIndex(h => h.toLowerCase().includes('desc') || h.toLowerCase().includes('particular'));
+            if (descIdx === -1) descIdx = 2;
+
+            let noIdx = headers.findIndex(h => h.toLowerCase() === 'no' || h.toLowerCase() === 'nos');
+            let lenIdx = headers.findIndex(h => h.toLowerCase().includes('length') || h.toLowerCase() === 'l');
+            let brdIdx = headers.findIndex(h => h.toLowerCase().includes('breadth') || h.toLowerCase() === 'b');
+            let hgtIdx = headers.findIndex(h => h.toLowerCase().includes('height') || h.toLowerCase() === 'h' || h.toLowerCase().includes('depth'));
+
+            const rows = [];
+            let grandTotalAmount = extractTotalAmountLakhs(rawGrid);
+
+            for (let r = headerRowIndex + 1; r < rawGrid.length; r++) {
+                const rowStr = rawGrid[r].map(c => String(c || '').toLowerCase().trim()).join(' ');
+                if (metaPatterns.some(p => rowStr.includes(p))) continue;
+
+                const rawRow = validCols.map(c => rawGrid[r][c]);
+                if (rawRow.every(val => val === undefined || val === null || String(val).trim() === '')) continue;
+
+                const descText = String(rawRow[descIdx] || '').trim();
+                const noVal = String(rawRow[noIdx] || '').trim();
+                const lenVal = lenIdx !== -1 ? String(rawRow[lenIdx] || '').trim() : '';
+                const brdVal = brdIdx !== -1 ? String(rawRow[brdIdx] || '').trim() : '';
+                const hgtVal = hgtIdx !== -1 ? String(rawRow[hgtIdx] || '').trim() : '';
+
+                const isFormulaSpan = noVal.length > 8 && lenVal === '' && brdVal === '' && hgtVal === '';
+
+                if (isFormulaSpan && noIdx !== -1 && hgtIdx !== -1) {
+                    const rowObj = [];
+                    validCols.forEach((c, idx) => {
+                        if (idx === noIdx) {
+                            rowObj.push({
+                                content: noVal,
+                                colSpan: (hgtIdx - noIdx + 1),
+                                styles: { halign: 'center', cellPadding: 1.0, fontSize: 7.5 }
+                            });
+                        } else if (idx > noIdx && idx <= hgtIdx) {
+                            // Covered by span
+                        } else {
+                            rowObj.push(formatCellVal(rawRow[idx]));
+                        }
+                    });
+                    rows.push(rowObj);
+                } else if (descText.length > 120) {
+                    const chunks = splitTextIntoChunks(descText, 52, 2);
+                    chunks.forEach((chunk, chunkIdx) => {
+                        const newRow = validCols.map((c, idx) => {
+                            if (idx === descIdx) return chunk;
+                            if (chunkIdx > 0 && !headers[idx].toLowerCase().includes('item') && !headers[idx].toLowerCase().includes('s.')) {
+                                return '';
+                            }
+                            return formatCellVal(rawRow[idx]);
+                        });
+                        rows.push(newRow);
+                    });
+                } else {
+                    const cleanRow = validCols.map(c => formatCellVal(rawGrid[r][c]));
+                    rows.push(cleanRow);
+                }
+            }
+
+            const totalAvailableWidth = isPortrait ? 198 : 285;
+            const colStyles = {};
+            let fixedSum = 0;
+
+            headers.forEach((h, idx) => {
+                if (idx === descIdx) return;
+
+                const head = String(h || '').toLowerCase().trim();
+                let colW = 12;
+
+                if (head.includes('s.no') || head === 's.' || head === 's' || head === 'sr.') {
+                    colW = 8;
+                    colStyles[idx] = { cellWidth: colW, halign: 'center' };
+                } else if (head.includes('item no') || head === 'item') {
+                    colW = 11;
+                    colStyles[idx] = { cellWidth: colW, halign: 'center' };
+                } else if (head === 'no' || head === 'nos') {
+                    colW = 9;
+                    colStyles[idx] = { cellWidth: colW, halign: 'center' };
+                } else if (head.includes('length') || head === 'l') {
+                    colW = 13;
+                    colStyles[idx] = { cellWidth: colW, halign: 'center' };
+                } else if (head.includes('breadth') || head === 'b') {
+                    colW = 13;
+                    colStyles[idx] = { cellWidth: colW, halign: 'center' };
+                } else if (head.includes('height') || head === 'h' || head.includes('depth') || head === 'd') {
+                    colW = 13;
+                    colStyles[idx] = { cellWidth: colW, halign: 'center' };
+                } else if (head.includes('unit') || head === 'per') {
+                    colW = 9;
+                    colStyles[idx] = { cellWidth: colW, halign: 'center' };
+                } else if (head.includes('content') || head.includes('area') || head.includes('qty')) {
+                    colW = 18;
+                    colStyles[idx] = { cellWidth: colW, halign: 'right' };
+                } else if (head.includes('rate')) {
+                    colW = 15;
+                    colStyles[idx] = { cellWidth: colW, halign: 'right' };
+                } else if (head.includes('amount') || head.includes('cost') || head.includes('total')) {
+                    colW = 21;
+                    colStyles[idx] = { cellWidth: colW, halign: 'right' };
+                } else {
+                    colW = 12;
+                    colStyles[idx] = { cellWidth: colW, halign: 'center' };
+                }
+                fixedSum += colW;
+            });
+
+            const remainingForDesc = Math.max(totalAvailableWidth - fixedSum, 60);
+            colStyles[descIdx] = { cellWidth: remainingForDesc, halign: 'left' };
+
+            return { headers, rows, colStyles, grandTotalAmount };
+        }
+
+        function resolveDynamicText(text, work, amount = '') {
+            if (!text) return '';
+            return text
+                .replace(/\{WORK_NAME\}/gi, (work && work.workName) || '')
+                .replace(/\{GP_NAME\}/gi, (work && work.gpName) || '')
+                .replace(/\{JANPAD\}/gi, (work && work.janpadName) || '')
+                .replace(/\{AMOUNT\}/gi, amount || '___________');
+        }
+
+        function getHindiTSOrderPageHtml(work, tsAmountLakhs) {
+            const officeHeader = document.getElementById('tsOfficeHeader') ? document.getElementById('tsOfficeHeader').value : 'कार्यालय कार्यपालन यंत्री ग्रामीण यांत्रिकी सेवा संभाग सिंगरौली (म.प्र.)';
+            const madName = document.getElementById('tsMadName') ? document.getElementById('tsMadName').value : '........................................';
+            const orderNo = document.getElementById('tsOrderNo') ? document.getElementById('tsOrderNo').value : 'क्रमांक/................../ग्रा.यां.से./तक./2026';
+            const orderDate = document.getElementById('tsOrderDate') ? document.getElementById('tsOrderDate').value : 'सिंगरौली, दिनांक: ..........................';
+            const col6Text = document.getElementById('tsCol6Text') ? document.getElementById('tsCol6Text').value : '............................';
+            const eeTitle = document.getElementById('tsEeTitle') ? document.getElementById('tsEeTitle').value : 'कार्यपालन यंत्री, ग्रामीण यांत्रिकी सेवा, संभाग सिंगरौली (म.प्र.)';
+            const copiesTo = document.getElementById('tsCopiesTo') ? document.getElementById('tsCopiesTo').value : '1- कलेक्टर जिला सिंगरौली की ओर सादर सूचनार्थ। 2- मुख्य कार्यपालन अधिकारी जिला पंचायत सिंगरौली की ओर सूचनार्थ। 3- जिला परियोजना समन्वयक, जिला शिक्षा केंद्र सिंगरौली की ओर सूचनार्थ।';
+
+            return `
+                <div class="ts-order-page" id="tsOrderPageCapture">
+                    <div class="ts-order-header">${officeHeader}</div>
+                    <div class="ts-order-sub">आदेश</div>
+                    
+                    <div class="ts-order-date-row">${orderDate}</div>
+
+                    <div class="ts-order-body-continuous">
+                        <strong>${orderNo}</strong> संभाग सिंगरौली म.प्र. शासन पंचायत एवं ग्रामीण विकास विभाग के ज्ञापन क्रमांक/7244/22/वि-10/ग्रा-यां-से-/2016 भोपाल दिनांक 09-12-2016 द्वारा प्रदत्त अधिकारों के तहत निम्न शर्तों पर कार्य की तकनीकी स्वीकृति कॉलम 05 में दर्शित राशि की प्रदान की जाती है।
+                    </div>
+
+                    <table class="ts-order-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 6%;">क्र.</th>
+                                <th style="width: 18%;">मद</th>
+                                <th style="width: 36%;">कार्य का नाम</th>
+                                <th style="width: 14%;">विकास खण्ड</th>
+                                <th style="width: 13%;">तकनीकी स्वीकृत राशि</th>
+                                <th style="width: 13%;">तकनीकी स्वी. क्र. एवं दिनांक</th>
+                            </tr>
+                            <tr style="font-size: 8pt; background: #fafafa;">
+                                <td>1</td><td>2</td><td>3</td><td>4</td><td>5</td><td>6</td>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>01</td>
+                                <td>${madName}</td>
+                                <td style="text-align: left; padding: 4px 6px;">${work.workName}<br><strong>ग्राम पंचायत:</strong> ${work.gpName}</td>
+                                <td>${work.janpadName}</td>
+                                <td style="font-weight: 700; color: #000; font-size: 9.5pt;">${tsAmountLakhs} लाख</td>
+                                <td>${col6Text}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="ts-terms-list">
+                        <strong>शर्तें :-</strong>
+                        <ol>
+                            <li>कार्य का प्राक्कलन में स्वीकृति मानदंड के अनुसार ही कराया जावे यदि उसमें कही परिवर्तन की आवश्यकता पड़े तो अधोहस्ताक्षरी से पूर्व अनुमति प्राप्त की जावे।</li>
+                            <li>आर.सी.सी. कार्य क्रियान्वयन के पूर्व आर.सी.सी. कार्य की डिजाइन सक्षम अधिकारी से अनुमोदन करा ली जावे।</li>
+                            <li>कार्य का संपादन शासकीय भूमि पर ही कराया जावे, एवं भूमि का नक्शा एवं खसरे का नकल प्राप्त कर अभिलेख में रखी जावे।</li>
+                            <li>कार्य में उपयोग आने वाली सामग्री का परीक्षण प्रयोगशाला से कराने के उपरांत ही निर्माण कार्य में उपयोग की जावे।</li>
+                            <li>कार्य पूर्णता प्रमाण पत्र जारी करने के पूर्व कार्य का निरीक्षण अधोहस्ताक्षरी से करा लिया जावे अन्यथा कार्य में किसी भी प्रकार की त्रुटि के लिए संबंधित उपयंत्री/सहायक यंत्री पूर्णतः जिम्मेदार होंगे।</li>
+                            <li>कार्य में क्रियान्वयन कार्य स्वीकृत योजना के नियमों के तहत ही कराया जावे।</li>
+                            <li>कार्य में लगने वाली सामग्री के क्रय में भण्डार क्रय नियम 14 अ का पालन किया जावे।</li>
+                            <li>कार्य स्वीकृत उपरांत विस्तृत प्राक्कलन ड्राइंग सर्वेक्षण एवं लीड चार्ट तैयार कर अनुमोदन कराना अनिवार्य होगा। तदुपरांत कार्य प्रारंभ किया जावेगा।</li>
+                            <li>आर.सी.सी./पी.सी.सी. कार्य में वाईब्रेटर का उपयोग किया जाना आवश्यक होगा।</li>
+                        </ol>
+                    </div>
+
+                    <div class="ts-ee-sign-block">
+                        <div style="height: 20px;"></div>
+                        <div>${eeTitle.replace(/,/g, '<br>')}</div>
+                    </div>
+
+                    <div class="ts-endorsement-block">
+                        <div style="display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 3px;">
+                            <span>पृ. ${orderNo}</span>
+                            <span>${orderDate}</span>
+                        </div>
+                        <div><strong>प्रतिलिपि:-</strong><br>${copiesTo.replace(/([1-9]-)/g, '<br>$1')}</div>
+                        <div class="ts-ee-sign-block" style="margin-top: 5px;">
+                            <div style="height: 18px;"></div>
+                            <div>${eeTitle.replace(/,/g, '<br>')}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function updateAllSheetsPreview() {
+            const previewStack = document.getElementById('allSheetsPreviewStack');
+            if (!previewStack) return;
+
+            const selectedCbs = document.querySelectorAll('input[name="selectedSheets"]:checked');
+            const selectedSheets = Array.from(selectedCbs).map(cb => cb.value);
+
+            const orientation = document.getElementById('pageOrientation') ? document.getElementById('pageOrientation').value : 'portrait';
+            const marginMm = document.getElementById('pageMarginMm') ? parseFloat(document.getElementById('pageMarginMm').value) || 6 : 6;
+            const fontSize = document.getElementById('previewFontSize') ? parseFloat(document.getElementById('previewFontSize').value) || 8.0 : 8.0;
+
+            const sampleWork = workItemsList.length > 0 ? workItemsList[0] : {
+                workName: 'Construction of School Building against Dilapidated School building at UEGS KITNIHWA BUDHADAND',
+                gpName: 'KITNIHWA',
+                janpadName: 'Deosar'
+            };
+
+            const s1_l1 = resolveDynamicText(document.getElementById('sig1_line1') ? document.getElementById('sig1_line1').value.trim() : 'Sub Engineer', sampleWork);
+            const s1_l2 = resolveDynamicText(document.getElementById('sig1_line2') ? document.getElementById('sig1_line2').value.trim() : 'Janpad Shiksha Kendra {JANPAD}', sampleWork);
+            const s2_l1 = resolveDynamicText(document.getElementById('sig2_line1') ? document.getElementById('sig2_line1').value.trim() : 'Assistant Engineer', sampleWork);
+            const s2_l2 = resolveDynamicText(document.getElementById('sig2_line2') ? document.getElementById('sig2_line2').value.trim() : 'Zila Shiksha Kendra Singrauli', sampleWork);
+
+            let previewAmountLakhs = "18.25";
+            if (templateWorkbook && selectedSheets.length > 0) {
+                const ws = templateWorkbook.Sheets[selectedSheets[0]];
+                let rawGrid = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+                previewAmountLakhs = extractTotalAmountLakhs(rawGrid);
+            } else if (document.getElementById('manualTsAmount')) {
+                previewAmountLakhs = document.getElementById('manualTsAmount').value.trim() || "18.25";
+            }
+
+            previewStack.innerHTML = '';
+
+            // Page 1: TS Order Preview
+            const p1Container = document.createElement('div');
+            p1Container.style.textAlign = 'center'; p1Container.style.width = '100%';
+            p1Container.innerHTML = `
+                <div class="page-badge"><i class="fa-solid fa-stamp"></i> Page 1: <strong>Technical Sanction (TS) Order (आदेश)</strong></div>
+                <div class="a4-sheet-card" style="text-align: left; padding: 12mm 10mm 10mm 10mm;">
+                    ${getHindiTSOrderPageHtml(sampleWork, previewAmountLakhs)}
+                </div>
+            `;
+            previewStack.appendChild(p1Container);
+
+            // Page 2: Technical Report (TR)
+            const trGrid = getTechnicalReportGrid(sampleWork);
+            const p2Container = document.createElement('div');
+            p2Container.style.textAlign = 'center'; p2Container.style.width = '100%';
+            let trHtml = `
+                <div class="page-badge"><i class="fa-solid fa-clipboard-question"></i> Page 2: <strong>Technical Report (TR)</strong></div>
+                <div class="a4-sheet-card" style="padding: ${marginMm}mm;">
+                    <div class="sheet-meta-header">
+                        <h3>TECHNICAL REPORT</h3>
+                        <div><strong>NAME OF WORK:-</strong> ${sampleWork.workName}</div>
+                        <div><strong>GRAM PANCHAYAT:</strong> ${sampleWork.gpName} &nbsp;|&nbsp; <strong>JANPAD:</strong> ${sampleWork.janpadName}</div>
+                    </div>
+                    <table class="preview-sheet-table" style="font-size: ${fontSize}pt;">
+                        <thead><tr><th style="width: 32px;">Sr. No.</th><th style="width: 40%;">Particulars / Questions</th><th>Description / Observations</th></tr></thead>
+                        <tbody>
+            `;
+            trGrid.rows.forEach(r => {
+                trHtml += `<tr><td style="text-align: center; padding: 2px 3px;">${r[0]}</td><td style="padding: 2px 3px;">${r[1]}</td><td style="text-align: left; padding: 2px 3px;">${r[2]}</td></tr>`;
+            });
+            trHtml += `
+                    </tbody></table>
+                    <div class="signatures-preview-grid">
+                        <div class="sig-col"><div style="margin-bottom: 14px;">_____________________</div><div class="sig-line1">${s1_l1}</div><div class="sig-line2">${s1_l2}</div></div>
+                        <div class="sig-col"><div style="margin-bottom: 14px;">_____________________</div><div class="sig-line1">${s2_l1}</div><div class="sig-line2">${s2_l2}</div></div>
+                    </div>
+                </div>
+            `;
+            p2Container.innerHTML = trHtml;
+            previewStack.appendChild(p2Container);
+
+            // Page 3+: Excel Sheets
+            if (templateWorkbook && selectedSheets.length > 0) {
+                selectedSheets.forEach((sheetName, index) => {
+                    const ws = templateWorkbook.Sheets[sheetName];
+                    const cleanGrid = parseExcelSheetDirect(ws, orientation === 'portrait');
+                    const headers = cleanGrid.headers;
+                    const rows = cleanGrid.rows;
+                    const colStyles = cleanGrid.colStyles;
+
+                    const hasTSOnThisSheet = shouldIncludeTSInSheet(sheetName);
+                    const rawTSBox = document.getElementById('finalTSBoxText') ? document.getElementById('finalTSBoxText').value.trim() : '';
+                    const finalTSResolved = resolveDynamicText(rawTSBox, sampleWork, previewAmountLakhs);
+
+                    const pageContainer = document.createElement('div');
+                    pageContainer.style.textAlign = 'center'; pageContainer.style.width = '100%';
+                    let sheetHtml = `
+                        <div class="page-badge"><i class="fa-solid fa-file-lines"></i> Estimate Sheet ${index + 1}: <strong>${sheetName}</strong> ${hasTSOnThisSheet ? '<span style="color:#34d399;">(Includes TS Order at End)</span>' : ''}</div>
+                        <div class="a4-sheet-card" style="padding: ${marginMm}mm;">
+                            <div class="sheet-meta-header">
+                                <h3>${sheetName.toUpperCase()}</h3>
+                                <div><strong>NAME OF WORK:-</strong> ${sampleWork.workName}</div>
+                                <div><strong>GRAM PANCHAYAT:</strong> ${sampleWork.gpName} &nbsp;|&nbsp; <strong>JANPAD:</strong> ${sampleWork.janpadName}</div>
+                            </div>
+                            <table class="preview-sheet-table" style="font-size: ${fontSize}pt;">
+                                <thead><tr>
+                    `;
+                    headers.forEach((h, i) => {
+                        const w = colStyles[i] ? colStyles[i].cellWidth : 12;
+                        sheetHtml += `<th style="width: ${w}mm;">${h}</th>`;
+                    });
+                    sheetHtml += `</tr></thead><tbody>`;
+
+                    rows.slice(0, 45).forEach(r => {
+                        sheetHtml += `<tr>`;
+                        if (Array.isArray(r)) {
+                            r.forEach((cell, idx) => {
+                                if (typeof cell === 'object' && cell !== null && cell.colSpan) {
+                                    sheetHtml += `<td colspan="${cell.colSpan}" style="text-align: center; font-size: 7pt; padding: 2px;">${cell.content}</td>`;
+                                } else {
+                                    let alignStyle = colStyles[idx] ? colStyles[idx].halign : 'left';
+                                    sheetHtml += `<td style="text-align: ${alignStyle}; padding: 2px 3px;">${cell}</td>`;
+                                }
+                            });
+                        }
+                        sheetHtml += `</tr>`;
+                    });
+
+                    sheetHtml += `
+                            </tbody></table>
+                            <div class="signatures-preview-grid">
+                                <div class="sig-col"><div style="margin-bottom: 14px;">_____________________</div><div class="sig-line1">${s1_l1}</div><div class="sig-line2">${s1_l2}</div></div>
+                                <div class="sig-col"><div style="margin-bottom: 14px;">_____________________</div><div class="sig-line1">${s2_l1}</div><div class="sig-line2">${s2_l2}</div></div>
+                            </div>
+                    `;
+
+                    if (hasTSOnThisSheet && finalTSResolved) {
+                        const eeAuth1 = document.getElementById('tsAuthorityLine1') ? document.getElementById('tsAuthorityLine1').value : 'Executive Engineer';
+                        const eeAuth2 = document.getElementById('tsAuthorityLine2') ? document.getElementById('tsAuthorityLine2').value : 'R.E.S. Singrauli';
+                        const eeGap = document.getElementById('eeSignGapMm') ? document.getElementById('eeSignGapMm').value : 18;
+
+                        sheetHtml += `
+                            <div class="ts-sanction-box-preview" style="font-size: ${fontSize}pt;">
+                                <div class="ts-header-title">TECHNICAL SANCTION</div>
+                                <div class="ts-body-text">${finalTSResolved}</div>
+                                <div class="ts-sign-right">
+                                    <div>Sanctioned By:</div>
+                                    <div style="height: ${eeGap}px;"></div>
+                                    <div>${eeAuth1}</div>
+                                    <div>${eeAuth2}</div>
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    sheetHtml += `</div>`;
+                    pageContainer.innerHTML = sheetHtml;
+                    previewStack.appendChild(pageContainer);
+                });
+            }
+        }
+
+        async function generateAllEstimates() {
+            const selectedCbs = document.querySelectorAll('input[name="selectedSheets"]:checked');
+            const selectedSheets = Array.from(selectedCbs).map(cb => cb.value);
+
+            if (!templateWorkbook) { showStatus('Please upload the master estimate Excel template first.', 'status-error'); return; }
+            if (workItemsList.length === 0) { showStatus('Please import a list of works Excel file.', 'status-error'); return; }
+
+            const orientation = document.getElementById('pageOrientation') ? document.getElementById('pageOrientation').value : 'portrait';
+            const isPortrait = orientation === 'portrait';
+            const marginMm = document.getElementById('pageMarginMm') ? parseFloat(document.getElementById('pageMarginMm').value) || 6 : 6;
+            const fontSize = document.getElementById('previewFontSize') ? parseFloat(document.getElementById('previewFontSize').value) || 8.0 : 8.0;
+
+            const raw_s1_l1 = document.getElementById('sig1_line1') ? document.getElementById('sig1_line1').value.trim() : 'Sub Engineer';
+            const raw_s1_l2 = document.getElementById('sig1_line2') ? document.getElementById('sig1_line2').value.trim() : 'Janpad Shiksha Kendra {JANPAD}';
+            const raw_s2_l1 = document.getElementById('sig2_line1') ? document.getElementById('sig2_line1').value.trim() : 'Assistant Engineer';
+            const raw_s2_l2 = document.getElementById('sig2_line2') ? document.getElementById('sig2_line2').value.trim() : 'Zila Shiksha Kendra Singrauli';
+
+            const rawTSBox = document.getElementById('finalTSBoxText') ? document.getElementById('finalTSBoxText').value.trim() : '';
+            const tsAuth1 = document.getElementById('tsAuthorityLine1') ? document.getElementById('tsAuthorityLine1').value.trim() : 'Executive Engineer';
+            const tsAuth2 = document.getElementById('tsAuthorityLine2') ? document.getElementById('tsAuthorityLine2').value.trim() : 'R.E.S. Singrauli';
+            const eeSignGap = document.getElementById('eeSignGapMm') ? parseFloat(document.getElementById('eeSignGapMm').value) || 18 : 18;
+
+            const btn = document.getElementById('generateBtn');
+            btn.disabled = true;
+            showStatus(`Processing ${workItemsList.length} complete packages (Ultra-HD 300 DPI Rendering)... Please wait.`, 'status-info');
+
+            try {
+                const zip = new JSZip();
+                const { jsPDF } = window.jspdf;
+                const { PDFDocument } = window.PDFLib;
+
+                await document.fonts.ready;
+
+                // Dedicated sandbox container for ultra-crisp 1:1 render matching preview
+                const renderDiv = document.createElement('div');
+                renderDiv.style.position = 'fixed';
+                renderDiv.style.left = '0';
+                renderDiv.style.top = '0';
+                renderDiv.style.width = '794px';
+                renderDiv.style.backgroundColor = '#ffffff';
+                renderDiv.style.padding = '42px 40px';
+                renderDiv.style.fontFamily = "'Noto Sans Devanagari', 'Calibri', sans-serif";
+                renderDiv.style.zIndex = '99999';
+                document.body.appendChild(renderDiv);
+
+                for (let wIdx = 0; wIdx < workItemsList.length; wIdx++) {
+                    const work = workItemsList[wIdx];
+                    const safeWorkName = String(work.workName || '').replace(/[/\\?%*:|"<>]/g, '_').substring(0, 50);
+
+                    const s1_l1 = resolveDynamicText(raw_s1_l1, work);
+                    const s1_l2 = resolveDynamicText(raw_s1_l2, work);
+                    const s2_l1 = resolveDynamicText(raw_s2_l1, work);
+                    const s2_l2 = resolveDynamicText(raw_s2_l2, work);
+
+                    let totalAmountLakhs = "18.25";
+                    if (selectedSheets.length > 0) {
+                        const ws = templateWorkbook.Sheets[selectedSheets[0]];
+                        let rawGrid = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+                        totalAmountLakhs = extractTotalAmountLakhs(rawGrid);
+                    } else if (document.getElementById('manualTsAmount')) {
+                        totalAmountLakhs = document.getElementById('manualTsAmount').value.trim() || "18.25";
+                    }
+
+                    // --- 1. PAGE 1: HIGH-RES 300 DPI LOSSLESS CANVAS OF HINDI TS ORDER ---
+                    renderDiv.innerHTML = getHindiTSOrderPageHtml(work, totalAmountLakhs);
+                    await new Promise(r => setTimeout(r, 60));
+
+                    const tsCanvas = await html2canvas(renderDiv, {
+                        scale: 3,
+                        useCORS: true,
+                        logging: false,
+                        backgroundColor: '#ffffff'
+                    });
+                    const tsImgData = tsCanvas.toDataURL('image/png');
+
+                    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+                    doc.addImage(tsImgData, 'PNG', 0, 0, 210, 297, '', 'FAST');
+
+                    // --- 2. PAGE 2: TECHNICAL REPORT ---
+                    doc.addPage('portrait', 'a4');
+                    const trGrid = getTechnicalReportGrid(work);
+                    doc.autoTable({
+                        head: [trGrid.headers],
+                        body: trGrid.rows,
+                        startY: marginMm + 12,
+                        theme: 'grid',
+                        tableWidth: 'auto',
+                        rowPageBreak: 'auto',
+                        styles: { fontSize: fontSize, cellPadding: 0.9, lineHeight: 1.12, minCellHeight: 3.5, lineColor: [60, 60, 60], lineWidth: 0.18, valign: 'middle', overflow: 'linebreak' },
+                        headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold', halign: 'center', cellPadding: 1.2 },
+                        columnStyles: trGrid.colStyles,
+                        margin: { top: marginMm + 12, left: marginMm, right: marginMm, bottom: marginMm },
+                        didDrawPage: function () {
+                            doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5);
+                            doc.text("TECHNICAL REPORT", marginMm, marginMm + 3.5);
+                            doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
+                            doc.text(`Name of Work: ${work.workName}`, marginMm, marginMm + 7.5);
+                            doc.text(`Gram Panchayat: ${work.gpName} | Janpad: ${work.janpadName}`, marginMm, marginMm + 11);
+                        }
+                    });
+
+                    let trFinalY = doc.lastAutoTable.finalY + 10;
+                    doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5);
+                    doc.text(s1_l1, marginMm + 5, trFinalY);
+                    doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5);
+                    doc.text(s1_l2, marginMm + 5, trFinalY + 3.8);
+                    doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5);
+                    doc.text(s2_l1, 150, trFinalY);
+                    doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5);
+                    doc.text(s2_l2, 150, trFinalY + 3.8);
+
+                    // --- 3. PAGES 3+: ESTIMATE SHEETS WITH FORMULA SPANNING ---
+                    selectedSheets.forEach((sheetName) => {
+                        doc.addPage(orientation, 'a4');
+                        const srcWs = templateWorkbook.Sheets[sheetName];
+                        const cleanGrid = parseExcelSheetDirect(srcWs, isPortrait);
+
+                        const hasTSOnSheet = shouldIncludeTSInSheet(sheetName);
+                        const finalTSResolved = resolveDynamicText(rawTSBox, work, totalAmountLakhs);
+
+                        if (cleanGrid.headers.length > 0) {
+                            doc.autoTable({
+                                head: [cleanGrid.headers],
+                                body: cleanGrid.rows,
+                                startY: marginMm + 12,
+                                theme: 'grid',
+                                tableWidth: 'auto',
+                                rowPageBreak: 'auto',
+                                styles: { fontSize: fontSize, cellPadding: 0.75, lineHeight: 1.12, minCellHeight: 3.5, lineColor: [60, 60, 60], lineWidth: 0.18, valign: 'middle', overflow: 'linebreak' },
+                                headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold', halign: 'center', cellPadding: 1.0 },
+                                columnStyles: cleanGrid.colStyles,
+                                margin: { top: marginMm + 12, left: marginMm, right: marginMm, bottom: marginMm },
+                                didDrawPage: function () {
+                                    doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5);
+                                    doc.text(`${sheetName.toUpperCase()}`, marginMm, marginMm + 3.5);
+                                    doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
+                                    doc.text(`Name of Work: ${work.workName}`, marginMm, marginMm + 7.5);
+                                    doc.text(`Gram Panchayat: ${work.gpName} | Janpad: ${work.janpadName}`, marginMm, marginMm + 11);
+                                }
+                            });
+
+                            let finalY = doc.lastAutoTable.finalY + 8;
+                            const pageWidth = doc.internal.pageSize.width;
+                            const pageHeight = doc.internal.pageSize.height;
+                            const usableWidth = pageWidth - marginMm - marginMm;
+                            const halfWidth = usableWidth * 0.68;
+                            const halfLeft = marginMm + ((usableWidth - halfWidth) / 2);
+
+                            let requiredEndSpace = 20;
+                            let splitTS = [];
+                            if (hasTSOnSheet && finalTSResolved) {
+                                splitTS = doc.splitTextToSize(finalTSResolved, halfWidth);
+                                requiredEndSpace += (splitTS.length * 3.8) + eeSignGap + 18;
+                            }
+
+                            if (finalY + requiredEndSpace > pageHeight - marginMm) { 
+                                doc.addPage(orientation, 'a4'); 
+                                finalY = marginMm + 10; 
+                            }
+
+                            // Signatures
+                            doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5);
+                            doc.text(s1_l1, marginMm + 5, finalY);
+                            doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5);
+                            doc.text(s1_l2, marginMm + 5, finalY + 3.8);
+                            doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5);
+                            doc.text(s2_l1, doc.internal.pageSize.width - marginMm - 45, finalY);
+                            doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5);
+                            doc.text(s2_l2, doc.internal.pageSize.width - marginMm - 45, finalY + 3.8);
+
+                            finalY += 15;
+
+                            if (hasTSOnSheet && finalTSResolved) {
+                                doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5);
+                                doc.text("TECHNICAL SANCTION", marginMm + (usableWidth / 2), finalY + 3.5, { align: 'center' });
+                                doc.setFont('helvetica', 'normal'); doc.setFontSize(fontSize);
+                                doc.text(splitTS, halfLeft, finalY + 8.5, { align: 'left' });
+
+                                const authY = finalY + (splitTS.length * 3.8) + 10;
+                                doc.setFont('helvetica', 'bold'); doc.setFontSize(8.8);
+                                doc.text("Sanctioned By:", halfLeft + halfWidth, authY, { align: 'right' });
+
+                                const eeTitleY = authY + eeSignGap;
+                                doc.text(tsAuth1, halfLeft + halfWidth, eeTitleY, { align: 'right' });
+                                doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
+                                doc.text(tsAuth2, halfLeft + halfWidth, eeTitleY + 3.8, { align: 'right' });
+                            }
+                        }
+                    });
+
+                    const pdfBytes = doc.output('arraybuffer');
+
+                    // --- 4. MERGE DRAWING (IF LOADED) ---
+                    let finalPdfBytes = pdfBytes;
+                    if (drawingPdfBuffer) {
+                        try {
+                            const estimateDoc = await PDFDocument.load(pdfBytes);
+                            const drawingDoc = await PDFDocument.load(drawingPdfBuffer);
+                            const copiedPages = await estimateDoc.copyPages(drawingDoc, drawingDoc.getPageIndices());
+                            copiedPages.forEach(p => estimateDoc.addPage(p));
+                            finalPdfBytes = await estimateDoc.save();
+                        } catch (e) { console.error("Drawing merge note:", e); }
+                    }
+
+                    zip.file(`Package_${wIdx + 1}_${safeWorkName}.pdf`, finalPdfBytes);
+                }
+
+                document.body.removeChild(renderDiv);
+                showStatus('Packaging files into ZIP download...', 'status-info');
+                const zipContent = await zip.generateAsync({ type: 'blob' });
+                saveAs(zipContent, 'Panchayat_Estimates_Complete_Package.zip');
+
+                showStatus(`🎉 Successfully created ${workItemsList.length} packages in ZIP!`, 'status-success');
+            } catch (err) {
+                console.error(err);
+                showStatus('Error: ' + err.message, 'status-error');
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        function showStatus(message, className) {
+            const box = document.getElementById('statusBox');
+            if (box) {
+                box.className = `status-box ${className}`;
+                box.style.display = 'block';
+                box.innerText = message;
+            }
+        }
+    </script>
+</body>
+</html>
